@@ -11,12 +11,6 @@ if False:
     LayoutType = Awaitable[Any]
 
 
-async def require(a: Awaitable[bool]) -> None:
-    result = await a
-    if not result:
-        raise wire.ActionCancelled
-
-
 async def interact(
     ctx: wire.GenericContext,
     layout: LayoutType,
@@ -27,3 +21,11 @@ async def interact(
     workflow.close_others()
     await ctx.call(ButtonRequest(code=brcode), ButtonAck)
     return await ctx.wait(layout)
+
+
+async def not_cancelled(a: Awaitable[None]) -> bool:
+    try:
+        await a
+        return True
+    except wire.ActionCancelled:
+        return False

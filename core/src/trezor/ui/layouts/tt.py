@@ -1,6 +1,6 @@
 from micropython import const
 
-from trezor import ui
+from trezor import ui, wire
 from trezor.messages import ButtonRequestType
 from trezor.ui.container import Container
 from trezor.ui.loader import LoaderDanger
@@ -8,7 +8,7 @@ from trezor.ui.qr import Qr
 from trezor.utils import chunks
 
 from ..components.common import break_path_to_lines
-from ..components.common.confirm import is_confirmed
+from ..components.common.confirm import is_confirmed, raise_if_cancelled
 from ..components.tt.button import ButtonCancel, ButtonDefault
 from ..components.tt.confirm import Confirm, HoldToConfirm
 from ..components.tt.scroll import Paginated, paginate_text
@@ -21,12 +21,20 @@ from ..constants.tt import (
     QR_Y,
     TEXT_MAX_LINES,
 )
-from .common import interact
+from .common import interact, not_cancelled
 
 if False:
-    from typing import Any, Iterator, List, Sequence, Union, Optional, Awaitable
+    from typing import (
+        Any,
+        Iterator,
+        List,
+        Sequence,
+        Union,
+        Optional,
+        Awaitable,
+        NoReturn,
+    )
 
-    from trezor import wire
     from trezor.messages.ButtonRequest import EnumTypeButtonRequestType
 
     from ..components.common.text import TextContent
@@ -53,6 +61,7 @@ __all__ = (
     "confirm_replacement",
     "confirm_modify_fee",
     "confirm_coinjoin",
+    "not_cancelled",
 )
 
 
@@ -73,7 +82,7 @@ async def confirm_action(
     larger_vspace: bool = False,  # TODO cleanup @ redesign
     br_code: EnumTypeButtonRequestType = ButtonRequestType.Other,
     **kwargs: Any,
-) -> bool:
+) -> None:
     text = Text(
         title,
         icon if icon is not None else ui.ICON_DEFAULT,
@@ -105,8 +114,8 @@ async def confirm_action(
         )
 
     cls = HoldToConfirm if hold else Confirm
-    return is_confirmed(
-        await interact(
+    await raise_if_cancelled(
+        interact(
             ctx,
             cls(text, confirm=verb, cancel=verb_cancel),
             br_type,
@@ -116,12 +125,12 @@ async def confirm_action(
 
 
 # TODO cleanup @ redesign
-async def confirm_wipe(ctx: wire.GenericContext) -> bool:
+async def confirm_wipe(ctx: wire.GenericContext) -> None:
     text = Text("Wipe device", ui.ICON_WIPE, ui.RED)
     text.normal("Do you really want to", "wipe the device?", "")
     text.bold("All data will be lost.")
-    return is_confirmed(
-        await interact(
+    await raise_if_cancelled(
+        interact(
             ctx,
             HoldToConfirm(text, confirm_style=ButtonCancel, loader_style=LoaderDanger),
             "wipe_device",
@@ -130,7 +139,7 @@ async def confirm_wipe(ctx: wire.GenericContext) -> bool:
     )
 
 
-async def confirm_reset_device(ctx: wire.GenericContext, prompt: str) -> bool:
+async def confirm_reset_device(ctx: wire.GenericContext, prompt: str) -> None:
     text = Text("Create new wallet", ui.ICON_RESET, new_lines=False)
     text.bold(prompt)
     text.br()
@@ -139,8 +148,8 @@ async def confirm_reset_device(ctx: wire.GenericContext, prompt: str) -> bool:
     text.br()
     text.normal("to ")
     text.bold("https://trezor.io/tos")
-    return is_confirmed(
-        await interact(
+    await raise_if_cancelled(
+        interact(
             ctx,
             Confirm(text, major_confirm=True),
             "setup_device",
@@ -182,13 +191,13 @@ async def confirm_backup(ctx: wire.GenericContext) -> bool:
     return confirmed
 
 
-async def confirm_path_warning(ctx: wire.GenericContext, path: str) -> bool:
+async def confirm_path_warning(ctx: wire.GenericContext, path: str) -> None:
     text = Text("Confirm path", ui.ICON_WRONG, ui.RED)
     text.normal("Path")
     text.mono(*break_path_to_lines(path, MONO_CHARS_PER_LINE))
     text.normal("is unknown.", "Are you sure?")
-    return is_confirmed(
-        await interact(
+    await raise_if_cancelled(
+        interact(
             ctx,
             Confirm(text),
             "path_warning",
@@ -264,9 +273,9 @@ def _show_xpub(xpub: str, desc: str, cancel: str) -> Paginated:
 
 async def show_xpub(
     ctx: wire.GenericContext, xpub: str, desc: str, cancel: str
-) -> bool:
-    return is_confirmed(
-        await interact(
+) -> None:
+    await raise_if_cancelled(
+        interact(
             ctx,
             _show_xpub(xpub, desc, cancel),
             "show_xpub",
@@ -327,7 +336,7 @@ async def show_address(
 
 def show_pubkey(
     ctx: wire.Context, pubkey: str, title: str = "Confirm public key"
-) -> Awaitable[bool]:
+) -> Awaitable[None]:
     return confirm_hex(
         ctx,
         br_type="show_pubkey",
@@ -350,15 +359,15 @@ async def _show_modal(
     button_cancel: Optional[str],
     icon: str,
     icon_color: int,
-) -> bool:
+) -> None:
     text = Text(header, icon, icon_color, new_lines=False)
     if subheader:
         text.bold(subheader)
         text.br()
         text.br_half()
     text.normal(content)
-    return is_confirmed(
-        await interact(
+    await raise_if_cancelled(
+        interact(
             ctx,
             Confirm(text, confirm=button_confirm, cancel=button_cancel),
             br_type,
@@ -367,7 +376,7 @@ async def _show_modal(
     )
 
 
-def show_error(
+async def show_error(
     ctx: wire.GenericContext,
     br_type: str,
     content: str,
@@ -375,8 +384,8 @@ def show_error(
     subheader: Optional[str] = None,
     button: str = "Close",
     red: bool = False,
-) -> Awaitable[bool]:
-    return _show_modal(
+) -> NoReturn:
+    await _show_modal(
         ctx,
         br_type=br_type,
         br_code=ButtonRequestType.Other,
@@ -388,6 +397,7 @@ def show_error(
         icon=ui.ICON_WRONG,
         icon_color=ui.RED if red else ui.ORANGE_ICON,
     )
+    raise wire.ActionCancelled  # Appease mypy.
 
 
 def show_warning(
@@ -398,7 +408,7 @@ def show_warning(
     subheader: Optional[str] = None,
     button: str = "Try again",
     br_code: EnumTypeButtonRequestType = ButtonRequestType.Warning,
-) -> Awaitable[bool]:
+) -> Awaitable[None]:
     return _show_modal(
         ctx,
         br_type=br_type,
@@ -419,7 +429,7 @@ def show_success(
     content: str,
     subheader: Optional[str] = None,
     button: str = "Continue",
-) -> Awaitable[bool]:
+) -> Awaitable[None]:
     return _show_modal(
         ctx,
         br_type=br_type,
@@ -438,14 +448,12 @@ async def confirm_output(
     ctx: wire.GenericContext,
     address: str,
     amount: str,
-) -> bool:
+) -> None:
     text = Text("Confirm sending", ui.ICON_SEND, ui.GREEN)
     text.normal(amount + " to")
     text.mono(*_split_address(address))
-    return is_confirmed(
-        await interact(
-            ctx, Confirm(text), "confirm_output", ButtonRequestType.ConfirmOutput
-        )
+    await raise_if_cancelled(
+        interact(ctx, Confirm(text), "confirm_output", ButtonRequestType.ConfirmOutput)
     )
 
 
@@ -462,7 +470,7 @@ async def confirm_hex(
     width: int = MONO_HEX_PER_LINE,
     truncate: bool = False,
     truncate_middle: bool = False,
-) -> bool:
+) -> None:
     text = Text(title, icon, icon_color, new_lines=False)
     if truncate:
         description_lines = 0
@@ -482,34 +490,32 @@ async def confirm_hex(
     else:
         # TODO: auto-pagination
         assert False
-    return is_confirmed(await interact(ctx, content, br_type, br_code))
+    await raise_if_cancelled(interact(ctx, content, br_type, br_code))
 
 
 async def confirm_total(
     ctx: wire.GenericContext, total_amount: str, fee_amount: str
-) -> bool:
+) -> None:
     text = Text("Confirm transaction", ui.ICON_SEND, ui.GREEN)
     text.normal("Total amount:")
     text.bold(total_amount)
     text.normal("including fee:")
     text.bold(fee_amount)
-    return is_confirmed(
-        await interact(
-            ctx, HoldToConfirm(text), "confirm_total", ButtonRequestType.SignTx
-        )
+    await raise_if_cancelled(
+        interact(ctx, HoldToConfirm(text), "confirm_total", ButtonRequestType.SignTx)
     )
 
 
 async def confirm_joint_total(
     ctx: wire.GenericContext, spending_amount: str, total_amount: str
-) -> bool:
+) -> None:
     text = Text("Joint transaction", ui.ICON_SEND, ui.GREEN)
     text.normal("You are contributing:")
     text.bold(spending_amount)
     text.normal("to the total amount:")
     text.bold(total_amount)
-    return is_confirmed(
-        await interact(
+    await raise_if_cancelled(
+        interact(
             ctx, HoldToConfirm(text), "confirm_joint_total", ButtonRequestType.SignTx
         )
     )
@@ -522,26 +528,24 @@ async def confirm_metadata(
     content: str,
     param: Optional[str] = None,
     br_code: EnumTypeButtonRequestType = ButtonRequestType.SignTx,
-) -> bool:
+) -> None:
     text = Text(title, ui.ICON_SEND, ui.GREEN, new_lines=False)
     text.format_parametrized(content, param if param is not None else "")
     text.br()
 
     text.normal("Continue?")
 
-    return is_confirmed(await interact(ctx, Confirm(text), br_type, br_code))
+    await raise_if_cancelled(interact(ctx, Confirm(text), br_type, br_code))
 
 
 async def confirm_replacement(
     ctx: wire.GenericContext, description: str, txid: str
-) -> bool:
+) -> None:
     text = Text(description, ui.ICON_SEND, ui.GREEN)
     text.normal("Confirm transaction ID:")
     text.mono(*_truncate_hex(txid, TEXT_MAX_LINES - 1))
-    return is_confirmed(
-        await interact(
-            ctx, Confirm(text), "confirm_replacement", ButtonRequestType.SignTx
-        )
+    await raise_if_cancelled(
+        interact(ctx, Confirm(text), "confirm_replacement", ButtonRequestType.SignTx)
     )
 
 
@@ -550,7 +554,7 @@ async def confirm_modify_fee(
     sign: int,
     user_fee_change: str,
     total_fee_new: str,
-) -> bool:
+) -> None:
     text = Text("Fee modification", ui.ICON_SEND, ui.GREEN)
     if sign == 0:
         text.normal("Your fee did not change.")
@@ -563,31 +567,29 @@ async def confirm_modify_fee(
     text.br_half()
     text.normal("Transaction fee:")
     text.bold(total_fee_new)
-    return is_confirmed(
-        await interact(ctx, HoldToConfirm(text), "modify_fee", ButtonRequestType.SignTx)
+    await raise_if_cancelled(
+        interact(ctx, HoldToConfirm(text), "modify_fee", ButtonRequestType.SignTx)
     )
 
 
 async def confirm_coinjoin(
     ctx: wire.GenericContext, fee_per_anonymity: Optional[str], total_fee: str
-) -> bool:
+) -> None:
     text = Text("Authorize CoinJoin", ui.ICON_RECOVERY, new_lines=False)
     if fee_per_anonymity is not None:
         text.normal("Fee per anonymity set:\n")
         text.bold("{} %\n".format(fee_per_anonymity))
     text.normal("Maximum total fees:\n")
     text.bold(total_fee)
-    return is_confirmed(
-        await interact(
-            ctx, HoldToConfirm(text), "coinjoin_final", ButtonRequestType.Other
-        )
+    await raise_if_cancelled(
+        interact(ctx, HoldToConfirm(text), "coinjoin_final", ButtonRequestType.Other)
     )
 
 
 # TODO cleanup @ redesign
 async def confirm_sign_identity(
     ctx: wire.GenericContext, proto: str, identity: str, challenge_visual: Optional[str]
-) -> bool:
+) -> None:
     lines: List[TextContent] = []
     if challenge_visual:
         lines.append(challenge_visual)
@@ -597,14 +599,14 @@ async def confirm_sign_identity(
 
     text = Text("Sign %s" % proto)
     text.normal(*lines)
-    return is_confirmed(
-        await interact(ctx, Confirm(text), "sign_identity", ButtonRequestType.Other)
+    await raise_if_cancelled(
+        interact(ctx, Confirm(text), "sign_identity", ButtonRequestType.Other)
     )
 
 
 async def confirm_signverify(
     ctx: wire.GenericContext, coin: str, message: str, address: str = None
-) -> bool:
+) -> None:
     if address:
         header = "Verify {} message".format(coin)
         font = ui.MONO
@@ -613,17 +615,16 @@ async def confirm_signverify(
         text = Text(header)
         text.bold("Confirm address:")
         text.mono(*_split_address(address))
-        if not is_confirmed(
-            await interact(ctx, Confirm(text), br_type, ButtonRequestType.Other)
-        ):
-            return False
+        await raise_if_cancelled(
+            interact(ctx, Confirm(text), br_type, ButtonRequestType.Other)
+        )
     else:
         header = "Sign {} message".format(coin)
         font = ui.NORMAL
         br_type = "sign_message"
 
-    return is_confirmed(
-        await interact(
+    await raise_if_cancelled(
+        interact(
             ctx,
             paginate_text(message, header, font=font),
             br_type,

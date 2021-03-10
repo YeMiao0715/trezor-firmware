@@ -2,7 +2,7 @@ import storage.device
 from trezor import wire
 from trezor.messages.Success import Success
 from trezor.messages.WebAuthnAddResidentCredential import WebAuthnAddResidentCredential
-from trezor.ui.layouts import require, show_error
+from trezor.ui.layouts import not_cancelled, show_error
 
 from apps.common.confirm import require_confirm
 
@@ -41,7 +41,7 @@ async def add_resident_credential(
     try:
         cred = Fido2Credential.from_cred_id(bytes(msg.credential_id), None)
     except Exception:
-        await require(
+        await not_cancelled(
             show_error(
                 ctx,
                 "warning_credential",

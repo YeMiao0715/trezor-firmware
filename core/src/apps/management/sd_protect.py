@@ -5,7 +5,7 @@ from trezor.crypto import random
 from trezor.messages import SdProtectOperationType
 from trezor.messages.Success import Success
 from trezor.pin import pin_to_int
-from trezor.ui.layouts import confirm_action, require, show_success
+from trezor.ui.layouts import confirm_action, show_success
 
 from apps.common.request_pin import (
     error_pin_invalid,
@@ -85,8 +85,8 @@ async def sd_protect_enable(ctx: wire.Context, msg: SdProtect) -> Success:
 
     storage.device.set_sd_salt_auth_key(salt_auth_key)
 
-    await require(
-        show_success(ctx, "success_sd", "You have successfully enabled SD protection.")
+    await show_success(
+        ctx, "success_sd", "You have successfully enabled SD protection."
     )
     return Success(message="SD card protection enabled")
 
@@ -119,8 +119,8 @@ async def sd_protect_disable(ctx: wire.Context, msg: SdProtect) -> Success:
         # because overall SD-protection was successfully disabled.
         pass
 
-    await require(
-        show_success(ctx, "success_sd", "You have successfully disabled SD protection.")
+    await show_success(
+        ctx, "success_sd", "You have successfully disabled SD protection."
     )
     return Success(message="SD card protection disabled")
 
@@ -156,10 +156,8 @@ async def sd_protect_refresh(ctx: wire.Context, msg: SdProtect) -> Success:
         # SD-protection was successfully refreshed.
         pass
 
-    await require(
-        show_success(
-            ctx, "success_sd", "You have successfully refreshed SD protection."
-        )
+    await show_success(
+        ctx, "success_sd", "You have successfully refreshed SD protection."
     )
     return Success(message="SD card protection refreshed")
 
@@ -174,6 +172,4 @@ def require_confirm_sd_protect(ctx: wire.Context, msg: SdProtect) -> Awaitable[N
     else:
         raise wire.ProcessError("Unknown operation")
 
-    return require(
-        confirm_action(ctx, "set_sd", "SD card protection", description=text)
-    )
+    return confirm_action(ctx, "set_sd", "SD card protection", description=text)

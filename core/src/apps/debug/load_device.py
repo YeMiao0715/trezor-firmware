@@ -5,7 +5,7 @@ from trezor.crypto import bip39, slip39
 from trezor.messages import BackupType
 from trezor.messages.Success import Success
 from trezor.pin import pin_to_int
-from trezor.ui.layouts import confirm_action, require
+from trezor.ui.layouts import confirm_action
 
 from apps.management import backup_types
 
@@ -69,12 +69,10 @@ def _validate(msg) -> int:
 
 
 async def _warn(ctx: wire.Context):
-    await require(
-        confirm_action(
-            ctx,
-            "warn_loading_seed",
-            "Loading seed",
-            "Loading private seed\nis not recommended.",
-            "Continue only if you\nknow what you are doing!",
-        )
+    await confirm_action(
+        ctx,
+        "warn_loading_seed",
+        "Loading seed",
+        "Loading private seed\nis not recommended.",
+        "Continue only if you\nknow what you are doing!",
     )

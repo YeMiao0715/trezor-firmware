@@ -4,7 +4,6 @@ from ubinascii import hexlify
 from trezor.messages import AmountUnit, ButtonRequestType, OutputScriptType
 from trezor.strings import format_amount
 from trezor.ui import layouts
-from trezor.ui.layouts import require
 
 from .. import addresses
 from . import omni
@@ -71,16 +70,14 @@ async def confirm_output(
             ctx, address_short, format_coin_amount(output.amount, coin, amount_unit)
         )
 
-    await require(layout)
+    await layout
 
 
 async def confirm_replacement(ctx: wire.Context, description: str, txid: bytes) -> None:
-    await require(
-        layouts.confirm_replacement(
-            ctx,
-            description,
-            hexlify(txid).decode(),
-        )
+    await layouts.confirm_replacement(
+        ctx,
+        description,
+        hexlify(txid).decode(),
     )
 
 
@@ -91,13 +88,11 @@ async def confirm_modify_fee(
     coin: CoinInfo,
     amount_unit: EnumTypeAmountUnit,
 ) -> None:
-    await require(
-        layouts.confirm_modify_fee(
-            ctx,
-            user_fee_change,
-            format_coin_amount(abs(user_fee_change), coin, amount_unit),
-            format_coin_amount(total_fee_new, coin, amount_unit),
-        )
+    await layouts.confirm_modify_fee(
+        ctx,
+        user_fee_change,
+        format_coin_amount(abs(user_fee_change), coin, amount_unit),
+        format_coin_amount(total_fee_new, coin, amount_unit),
     )
 
 
@@ -108,12 +103,10 @@ async def confirm_joint_total(
     coin: CoinInfo,
     amount_unit: EnumTypeAmountUnit,
 ) -> None:
-    await require(
-        layouts.confirm_joint_total(
-            ctx,
-            spending_amount=format_coin_amount(spending, coin, amount_unit),
-            total_amount=format_coin_amount(total, coin, amount_unit),
-        ),
+    await layouts.confirm_joint_total(
+        ctx,
+        spending_amount=format_coin_amount(spending, coin, amount_unit),
+        total_amount=format_coin_amount(total, coin, amount_unit),
     )
 
 
@@ -124,12 +117,10 @@ async def confirm_total(
     coin: CoinInfo,
     amount_unit: EnumTypeAmountUnit,
 ) -> None:
-    await require(
-        layouts.confirm_total(
-            ctx,
-            total_amount=format_coin_amount(spending, coin, amount_unit),
-            fee_amount=format_coin_amount(fee, coin, amount_unit),
-        ),
+    await layouts.confirm_total(
+        ctx,
+        total_amount=format_coin_amount(spending, coin, amount_unit),
+        fee_amount=format_coin_amount(fee, coin, amount_unit),
     )
 
 
@@ -137,30 +128,26 @@ async def confirm_feeoverthreshold(
     ctx: wire.Context, fee: int, coin: CoinInfo, amount_unit: EnumTypeAmountUnit
 ) -> None:
     fee_amount = format_coin_amount(fee, coin, amount_unit)
-    await require(
-        layouts.confirm_metadata(
-            ctx,
-            "fee_over_threshold",
-            "High fee",
-            "The fee of\n{}is unexpectedly high.",
-            fee_amount,
-            ButtonRequestType.FeeOverThreshold,
-        )
+    await layouts.confirm_metadata(
+        ctx,
+        "fee_over_threshold",
+        "High fee",
+        "The fee of\n{}is unexpectedly high.",
+        fee_amount,
+        ButtonRequestType.FeeOverThreshold,
     )
 
 
 async def confirm_change_count_over_threshold(
     ctx: wire.Context, change_count: int
 ) -> None:
-    await require(
-        layouts.confirm_metadata(
-            ctx,
-            "change_count_over_threshold",
-            "Warning",
-            "There are {}\nchange-outputs.\n",
-            str(change_count),
-            ButtonRequestType.SignTx,
-        )
+    await layouts.confirm_metadata(
+        ctx,
+        "change_count_over_threshold",
+        "Warning",
+        "There are {}\nchange-outputs.\n",
+        str(change_count),
+        ButtonRequestType.SignTx,
     )
 
 
@@ -180,13 +167,11 @@ async def confirm_nondefault_locktime(
         text = "Locktime for this\ntransaction is set to\ntimestamp:\n{}"
         param = str(lock_time)
 
-    await require(
-        layouts.confirm_metadata(
-            ctx,
-            "nondefault_locktime",
-            title,
-            text,
-            param,
-            br_code=ButtonRequestType.SignTx,
-        )
+    await layouts.confirm_metadata(
+        ctx,
+        "nondefault_locktime",
+        title,
+        text,
+        param,
+        br_code=ButtonRequestType.SignTx,
     )
