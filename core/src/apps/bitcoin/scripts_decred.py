@@ -106,12 +106,6 @@ def output_script_sstxchange(addr: str) -> bytearray:
     except ValueError:
         raise wire.DataError("Invalid address")
 
-    # Using change addresses is no longer common practice. Inputs are split
-    # beforehand.
-    for b in raw_address[2:]:
-        if b != 0:
-            raise wire.DataError("Only zeroed addresses accepted for sstx change")
-
     w = empty_bytearray(26)
     w.append(0xBD)  # OP_SSTXCHANGE
     w.append(0x76)  # OP_DUP

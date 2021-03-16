@@ -271,10 +271,16 @@ class Decred(Bitcoin):
         txo = await helpers.request_tx_output(self.tx_req, 2, self.coin)
         if txo.address is None:
             raise wire.DataError("Missing address.")
-        # Change addresses are not currently used. Inputs should be exact.
-        if txo.amount != 0:
-            raise wire.DataError("Only value of 0 allowed for sstx change")
         script_pubkey = scripts_decred.output_script_sstxchange(txo.address)
+        # Using change addresses is no longer common practice. Inputs are split
+        # beforehand and should be exact.
+        if txo.amount != 0:
+            raise wire.DataError("Only value of 0 allowed for sstx change.")
+        if (
+            script_pubkey
+            != b"\xBD\x76\xA9\x14\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x88\xAC"
+        ):
+            raise wire.DataError("Only zeroed addresses accepted for sstx change.")
         self.approver.add_change_output(txo, script_pubkey)
         self.tx_info.add_output(txo, script_pubkey)
         self.write_tx_output(self.serialized_tx, txo, script_pubkey)
