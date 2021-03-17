@@ -18,8 +18,10 @@ DECRED_SERIALIZE_FULL = const(0 << 16)
 DECRED_SERIALIZE_NO_WITNESS = const(1 << 16)
 DECRED_SERIALIZE_WITNESS_SIGNING = const(3 << 16)
 DECRED_SCRIPT_VERSION = const(0)
-
 DECRED_SIGHASH_ALL = const(1)
+OUTPUT_SCRIPT_NULL_SSTXCHANGE = (
+    b"\xBD\x76\xA9\x14\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x88\xAC"
+)
 
 if False:
     from typing import Optional, Union, List
@@ -273,13 +275,11 @@ class Decred(Bitcoin):
             raise wire.DataError("Missing address.")
         script_pubkey = scripts_decred.output_script_sstxchange(txo.address)
         # Using change addresses is no longer common practice. Inputs are split
-        # beforehand and should be exact.
+        # beforehand and should be exact. SSTX change should pay zero amount to
+        # a zeroed hash.
         if txo.amount != 0:
             raise wire.DataError("Only value of 0 allowed for sstx change.")
-        if (
-            script_pubkey
-            != b"\xBD\x76\xA9\x14\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x88\xAC"
-        ):
+        if script_pubkey != OUTPUT_SCRIPT_NULL_SSTXCHANGE:
             raise wire.DataError("Only zeroed addresses accepted for sstx change.")
         self.approver.add_change_output(txo, script_pubkey)
         self.tx_info.add_output(txo, script_pubkey)

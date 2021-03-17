@@ -80,7 +80,7 @@ def input_script_multisig(
     return w
 
 
-# A submission for an address hash.
+# A ticket purchase submission for an address hash.
 def output_script_sstxsubmissionpkh(addr: str) -> bytearray:
     try:
         raw_address = base58.decode_check(addr, blake256d_32)
@@ -98,8 +98,7 @@ def output_script_sstxsubmissionpkh(addr: str) -> bytearray:
     return w
 
 
-# A currently unused stake change script. Output amount has been checked to be
-# zero. The addr is also checked as to whether it pays to a zeroed hash.
+# Ticket purchase change script.
 def output_script_sstxchange(addr: str) -> bytearray:
     try:
         raw_address = base58.decode_check(addr, blake256d_32)
