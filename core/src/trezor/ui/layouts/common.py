@@ -11,6 +11,13 @@ if False:
     LayoutType = Awaitable[Any]
 
 
+async def button_request(
+    ctx: wire.GenericContext, code: EnumTypeButtonRequestType = ButtonRequestType.Other
+) -> None:
+    workflow.close_others()
+    await ctx.call(ButtonRequest(code=code), ButtonAck)
+
+
 async def interact(
     ctx: wire.GenericContext,
     layout: LayoutType,
