@@ -11,7 +11,7 @@ from ...constants import (
 )
 
 if False:
-    from typing import Any, List, Optional, Union
+    from typing import Any, List, Optional, Sequence, Union
 
     TextContent = Union[str, int]
 
@@ -172,7 +172,7 @@ _WORKING_SPAN = Span()
 
 
 def render_text(
-    items: List[TextContent],
+    items: Sequence[TextContent],
     new_lines: bool,
     max_lines: int,
     font: int = ui.NORMAL,
