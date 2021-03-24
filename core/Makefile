@@ -107,6 +107,7 @@ mypy:
 		src/main.py \
 		src/apps/bitcoin \
 		src/apps/cardano \
+		src/apps/management \
 		src/apps/misc \
 		src/apps/webauthn \
 		src/trezor/ui
