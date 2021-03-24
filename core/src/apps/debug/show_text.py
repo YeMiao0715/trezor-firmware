@@ -2,17 +2,16 @@ import trezor.messages.DebugLinkShowTextStyle as S
 from trezor import ui, wire
 from trezor.messages.DebugLinkShowText import DebugLinkShowText
 from trezor.messages.Success import Success
-from trezor.ui import style, text
-from trezor.ui.components.tt.text import Text
-
-from apps.common.confirm import confirm
+from trezor.ui import style
+from trezor.ui.components.tt.confirm import Confirm
+from trezor.ui.components.tt.text import BR, BR_HALF, Text
 
 STYLES = {
     S.NORMAL: ui.NORMAL,
     S.BOLD: ui.BOLD,
     S.MONO: ui.MONO,
-    S.BR: text.BR,
-    S.BR_HALF: text.BR_HALF,
+    S.BR: BR,
+    S.BR_HALF: BR_HALF,
 }
 
 
@@ -45,5 +44,5 @@ async def show_text(ctx: wire.Context, msg: DebugLinkShowText) -> Success:
         elif item.content is not None:
             dlg.content.append(item.content)
 
-    await confirm(ctx, dlg)
-    return Success("text shown")
+    await ctx.wait(Confirm(dlg))
+    return Success(message="text shown")
